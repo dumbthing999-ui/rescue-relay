@@ -3,9 +3,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+const PLACEHOLDER = "YOUR_SUPABASE";
+function envConfigured(...values: (string | undefined)[]) {
+  return values.every(
+    (v) => !!v && !v.startsWith(PLACEHOLDER) && !v.startsWith("your-")
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
   const path = request.nextUrl.pathname;
+
+  // Public routes: landing, public impact, auth pages, static assets
+  const publicRoutes = ["/login", "/signup", "/auth/callback", "/impact"];
+  const isPublicRoute = publicRoutes.some(
+    (route) => path === route || path.startsWith(route + "/")
+  );
+
+  // If Supabase isn't configured yet (offline build), don't block anything.
+  if (!envConfigured(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,12 +46,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  // Public routes: landing, public impact, auth pages, static assets
-  const publicRoutes = ["/login", "/signup", "/auth/callback", "/impact"];
-  const isPublicRoute = publicRoutes.some(
-    (route) => path === route || path.startsWith(route + "/")
-  );
 
   if (!user && !isPublicRoute) {
     const redirectUrl = new URL("/login", request.url);

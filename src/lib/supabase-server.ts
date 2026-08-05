@@ -67,19 +67,32 @@ export function createServiceClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   if (!envConfigured(url, serviceKey)) {
+    const notConfigured = { message: "Not configured" };
+    const queryResult = { data: [], error: notConfigured };
     return {
       auth: { getUser: async () => ({ data: { user: null }, error: null }) },
       from: () => ({
         select: () => ({
           eq: () => ({
-            maybeSingle: async () => ({ data: null, error: { message: "Not configured" } }),
+            maybeSingle: async () => ({ data: null, error: notConfigured }),
+            single: async () => ({ data: null, error: notConfigured }),
+            order: () => ({ data: [], error: notConfigured }),
+            limit: async () => ({ data: [], error: notConfigured }),
           }),
-          maybeSingle: async () => ({ data: null, error: { message: "Not configured" } }),
+          order: () => ({ data: [], error: notConfigured }),
+          maybeSingle: async () => ({ data: null, error: notConfigured }),
+          limit: async () => ({ data: [], error: notConfigured }),
         }),
-        eq: () => ({ data: [], error: null }),
+        eq: () => ({ data: [], error: notConfigured }),
+        order: () => ({ data: [], error: notConfigured }),
+        limit: async () => ({ data: [], error: notConfigured }),
+        insert: async () => ({ data: null, error: notConfigured }),
+        update: async () => ({ data: null, error: notConfigured }),
+        delete: async () => ({ data: null, error: notConfigured }),
+        upsert: async () => ({ data: null, error: notConfigured }),
       }),
-      rpc: async () => ({ data: null, error: { message: "Not configured" } }),
-      storage: { from: () => ({ download: async () => ({ data: null, error: { message: "Not configured" } }) }) },
+      rpc: async () => ({ data: null, error: notConfigured }),
+      storage: { from: () => ({ download: async () => ({ data: null, error: notConfigured }) }) },
     } as unknown as ReturnType<typeof supabaseAdmin>;
   }
 
