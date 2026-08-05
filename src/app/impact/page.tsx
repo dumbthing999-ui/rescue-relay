@@ -12,7 +12,9 @@ import {
   type OutcomeWeek,
 } from "@/components/impact/ImpactCharts";
 
-export const revalidate = 60;
+// Dynamic (not ISR): queries Supabase at request time, so it never crashes
+// static generation when env vars are placeholders.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Live Impact — Rescue Relay",
