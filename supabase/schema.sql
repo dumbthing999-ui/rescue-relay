@@ -270,7 +270,7 @@ create index idx_check_ins_claim on public.check_ins(claim_id);
 create index idx_notifications_user_read on public.notifications(user_id, read);
 
 -- One active claim per donation (enforced by claim_donation RPC as well)
-create unique index claims_one_active_per_donation on public.claims(donation_id) where status = 'active';
+create unique index claims_one_active_per_donation on public.claims(donation_id, claimed_by) where status = 'active';
 
 -- ============================================
 -- RLS HELPER FUNCTIONS

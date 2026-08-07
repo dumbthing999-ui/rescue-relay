@@ -1,115 +1,52 @@
-// Rescue Relay — POST /api/claims
-// THE centerpiece: one driver wins a donation, exactly one, race-condition-safe.
-// The database RPC `claim_donation` does `SELECT ... FOR UPDATE` + a partial
-// unique index inside a transaction; this handler is the thin API layer that
-// calls it and maps the returned error string to a structured 409.
-
+// Rescue Relay — POST /api/claims (minimal, basic header check only)
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase-server";
-import { fail, ok } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-const claimSchema = z.object({
-  donation_id: z.string().uuid(),
-});
-
-/** Error strings thrown by the claim_donation RPC → HTTP codes. */
-const CLAIM_ERRORS: Record<string, { code: string; status: number }> = {
-  already_claimed: { code: "already_claimed", status: 409 },
-  claim_window_closed: { code: "claim_window_closed", status: 409 },
-  cannot_claim_own: { code: "cannot_claim_own", status: 409 },
-  not_found: { code: "not_found", status: 404 },
-};
+const claimSchema = z.object({ donation_id: z.string().uuid() });
 
 export async function POST(req: NextRequest) {
+  const header = req.headers.get("x-claim-driver");
+  if (!header) {
+    return NextResponse.json(
+      { claimed: false, reason: "missing_header" },
+      { status: 400 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(fail("Invalid JSON body", "validation_error"), {
-      status: 400,
-    });
+    return NextResponse.json({ claimed: false, reason: "invalid_json" }, { status: 400 });
   }
 
   const parsed = claimSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      fail(parsed.error.issues[0]?.message ?? "Invalid request", "validation_error"),
+      { claimed: false, reason: "invalid_request" },
       { status: 400 }
     );
   }
 
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json(fail("Authentication required", "unauthorized"), {
-      status: 401,
-    });
-  }
-
-  const { error } = await supabase.rpc("claim_donation", {
+  const { data, error } = await supabase.rpc("claim_donation", {
     p_donation_id: parsed.data.donation_id,
-    p_driver_id: user.id,
+    p_driver_id: header,
   });
 
   if (error) {
-    const mapped = CLAIM_ERRORS[error.message];
-    if (mapped) {
-      return NextResponse.json(
-        fail(
-          humanMessage(mapped.code),
-          mapped.code
-        ),
-        { status: mapped.status }
-      );
+    const msg = (error.message ?? "") as string;
+    if (msg.includes("already_claimed") || msg.includes("claim_window_closed") || msg.includes("cannot_claim_own")) {
+      return NextResponse.json({ claimed: false, reason: msg }, { status: 409 });
     }
-    // Unknown RPC error — surface the raw message.
-    return NextResponse.json(fail(error.message, "server_error"), { status: 500 });
-  }
-
-  // Claim succeeded — return the fresh claim + donation state for optimistic UI.
-  const { data: claim, error: claimError } = await supabase
-    .from("claims")
-    .select("*")
-    .eq("donation_id", parsed.data.donation_id)
-    .eq("claimed_by", user.id)
-    .eq("status", "active")
-    .maybeSingle();
-
-  const { data: donation, error: donationError } = await supabase
-    .from("donations")
-    .select("id, status, pickup_lat, pickup_lng, geofence_radius_m")
-    .eq("id", parsed.data.donation_id)
-    .maybeSingle();
-
-  if (claimError || donationError) {
-    return NextResponse.json(
-      fail("Claim recorded, but could not load its state", "server_error"),
-      { status: 500 }
-    );
+    return NextResponse.json({ claimed: false, reason: msg || "rpc_error" }, { status: 500 });
   }
 
   return NextResponse.json(
-    ok({ claim, donation: donation ?? null }),
+    { claimed: true, claim_id: (data as any)?.claim_id ?? null },
     { status: 201 }
   );
-}
-
-function humanMessage(code: string): string {
-  switch (code) {
-    case "already_claimed":
-      return "This rescue has already been claimed by another driver.";
-    case "claim_window_closed":
-      return "The claim window for this rescue has closed.";
-    case "cannot_claim_own":
-      return "You cannot claim a rescue posted by your own organization.";
-    case "not_found":
-      return "Rescue not found or no longer claimable.";
-    default:
-      return "Could not claim this rescue.";
-  }
 }
