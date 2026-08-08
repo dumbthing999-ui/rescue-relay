@@ -108,7 +108,7 @@ async function computeFromDeliveries(svc: ServiceClient) {
   const { data } = await svc
     .from("donations")
     .select(
-      "id, org_id, donor_id, total_pounds, estimated_meals, status, created_at, updated_at, claimed_at, donor:donors(name, neighborhood)"
+      "id, org_id, donor_id, total_pounds, estimated_meals, status, created_at, updated_at, donor:donors(name, neighborhood)"
     )
     .in("status", ["delivered", "expired"]);
 
@@ -121,7 +121,6 @@ async function computeFromDeliveries(svc: ServiceClient) {
     status: string;
     created_at: string;
     updated_at: string;
-    claimed_at: string | null;
     donor: { name: string | null; neighborhood: string | null } | null;
   }>;
 
@@ -187,17 +186,11 @@ async function computeFromDeliveries(svc: ServiceClient) {
     .sort((a, b) => a.week.localeCompare(b.week))
     .slice(-8);
 
-  const claims = rows
-    .filter((r) => r.status === "delivered" && r.claimed_at && r.created_at)
-    .map((r) => {
-      const a = new Date(r.claimed_at!).getTime();
-      const b = new Date(r.created_at).getTime();
-      return Math.max(0, (b - a) / 60000);
-    })
-    .sort((a, b) => a - b);
-  const median_claim_minutes = claims.length
-    ? claims[Math.floor(claims.length / 2)]
-    : null;
+  // Median claim time is not computed — the live DB has no `claimed_at`
+  // column, so this renders as "—" (the tuned muted state) rather than
+  // crashing the query. The claimed-at timestamp can be added to the schema
+  // later without touching this page.
+  const median_claim_minutes: number | null = null;
 
   return {
     total_pounds,
