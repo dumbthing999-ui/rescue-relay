@@ -10,9 +10,12 @@ import type { Donation } from "@/types";
 export default function DonationActions({
   donationId,
   status,
+  canCancel: canCancelProp,
 }: {
   donationId: string;
   status: Donation["status"];
+  /** Whether the viewing user may cancel (server gates on org_admin). */
+  canCancel?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"delivered" | "cancelled" | null>(null);
@@ -34,11 +37,13 @@ export default function DonationActions({
   }
 
   const canDeliver = status === "claimed" || status === "in_transit";
+  const roleAllowsCancel = canCancelProp !== false; // default true when prop absent
   const canCancel =
-    status === "available" ||
-    status === "claimed" ||
-    status === "in_transit" ||
-    status === "expired";
+    roleAllowsCancel &&
+    (status === "available" ||
+      status === "claimed" ||
+      status === "in_transit" ||
+      status === "expired");
 
   return (
     <div>

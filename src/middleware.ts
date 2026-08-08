@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Public routes: landing, public impact, auth pages, static assets
-  const publicRoutes = ["/login", "/signup", "/auth/callback", "/impact"];
+  const publicRoutes = ["/login", "/signup", "/auth/callback", "/impact", "/api/impact"];
   const isPublicRoute = publicRoutes.some(
     (route) => path === route || path.startsWith(route + "/")
   );

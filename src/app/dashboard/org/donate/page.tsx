@@ -217,6 +217,9 @@ export default function DonatePage() {
 
         {step === 2 && (
           <section className="space-y-3">
+            {/* TODO: when @/components/donate/AIUploadCard exists, swap this notice
+                for an AIUploadCard import + a "manual" toggle between the two flows.
+                The classify API route at /api/donations/classify is already live. */}
             {/* Photo AI classification is not wired up yet — manual entry only. */}
             <p className="rounded-lg border border-edge-subtle bg-surface-inset px-4 py-2 text-xs text-ink-muted">
               Photo AI classification coming soon — add your items manually for now.

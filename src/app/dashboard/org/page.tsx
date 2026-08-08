@@ -1,28 +1,10 @@
 import Link from "next/link";
-import { PackagePlus, PackageOpen, Truck, Scale, Building2 } from "lucide-react";
+import { PackagePlus, PackageOpen, Scale, UtensilsCrossed, Building2 } from "lucide-react";
 import { createClient } from "@/lib/supabase-server";
+import StatusPill from "@/components/StatusPill";
 import type { Donation } from "@/types";
 
 export const dynamic = "force-dynamic";
-
-// Status pill — visual states defined in the task spec.
-function StatusPill({ status }: { status: Donation["status"] }) {
-  const styles: Record<Donation["status"], string> = {
-    available: "border-amber-400/30 bg-amber-400/10 text-amber-400",
-    claimed: "border-green-400/30 bg-green-400/10 text-green-400",
-    in_transit: "border-blue-400/30 bg-blue-400/10 text-blue-400",
-    delivered: "border-transparent bg-green-500 text-black",
-    expired: "border-red-400/30 bg-red-400/10 text-red-400",
-    cancelled: "border-edge-default bg-surface-inset text-ink-muted",
-  };
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${styles[status]}`}
-    >
-      {status.replace("_", " ")}
-    </span>
-  );
-}
 
 function formatWindow(start: string, end: string) {
   const fmt: Intl.DateTimeFormatOptions = {
@@ -101,13 +83,20 @@ export default async function OrgDashboardPage() {
   })[];
 
   const activeRescues = rows.filter((d) => d.status === "available").length;
-  const inTransit = rows.filter((d) => d.status === "in_transit").length;
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const lbsThisMonth = rows
-    .filter((d) => d.status === "delivered" && new Date(d.created_at) >= monthStart)
-    .reduce((sum, d) => sum + (d.total_pounds ?? 0), 0);
+  const deliveredThisMonth = rows.filter(
+    (d) => d.status === "delivered" && new Date(d.created_at) >= monthStart
+  );
+  const lbsThisMonth = deliveredThisMonth.reduce(
+    (sum, d) => sum + (d.total_pounds ?? 0),
+    0
+  );
+  const mealsThisMonth = deliveredThisMonth.reduce(
+    (sum, d) => sum + (d.estimated_meals ?? 0),
+    0
+  );
 
   return (
     <div className="mx-auto max-w-5xl p-6">
@@ -115,19 +104,19 @@ export default async function OrgDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-ink-primary">
             {org?.name ?? "Organization dashboard"}
-          </h1>
+         </h1>
           <p className="mt-1 text-sm text-ink-secondary">
             Keep food moving — post donations and track every rescue.
-          </p>
-        </div>
+         </p>
+       </div>
         <Link
           href="/dashboard/org/donate"
           className="flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 font-semibold text-black transition hover:bg-brand-400"
         >
           <PackagePlus className="h-4 w-4" />
           Post a donation
-        </Link>
-      </div>
+       </Link>
+     </div>
 
       {/* Stat cards */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -136,13 +125,17 @@ export default async function OrgDashboardPage() {
           label="Active rescues"
           value={activeRescues}
         />
-        <StatCard icon={Truck} label="In transit" value={inTransit} />
         <StatCard
           icon={Scale}
-          label="Lbs delivered this month"
+          label="Lbs rescued this month"
           value={`${Math.round(lbsThisMonth)} lbs`}
         />
-      </div>
+        <StatCard
+          icon={UtensilsCrossed}
+          label="Meals served this month"
+          value={Math.round(mealsThisMonth)}
+        />
+     </div>
 
       {/* Recent donations */}
       <section className="mt-8">
@@ -151,14 +144,14 @@ export default async function OrgDashboardPage() {
           <div className="mt-4 rounded-2xl border border-edge-subtle bg-surface-elevated p-10 text-center">
             <p className="text-sm text-ink-secondary">
               No donations yet — post your first one to start the relay.
-            </p>
+           </p>
             <Link
               href="/dashboard/org/donate"
               className="mt-4 inline-block rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-400"
             >
               Post a donation
-            </Link>
-          </div>
+           </Link>
+         </div>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-2xl border border-edge-subtle bg-surface-elevated">
             <table className="w-full min-w-[640px] text-left text-sm">
@@ -168,8 +161,8 @@ export default async function OrgDashboardPage() {
                   <th className="px-4 py-3 font-medium">Donor</th>
                   <th className="px-4 py-3 font-medium">Pickup window</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
+               </tr>
+             </thead>
               <tbody>
                 {rows.map((donation) => (
                   <tr
@@ -182,28 +175,28 @@ export default async function OrgDashboardPage() {
                         className="font-medium text-ink-primary hover:text-brand-400"
                       >
                         {itemSummary(donation)}
-                      </Link>
-                    </td>
+                     </Link>
+                   </td>
                     <td className="px-4 py-3 text-ink-secondary">
                       {donation.donor?.name ?? "Unknown donor"}
-                    </td>
+                   </td>
                     <td className="px-4 py-3 text-ink-secondary">
                       {formatWindow(
                         donation.pickup_window_start,
                         donation.pickup_window_end
                       )}
-                    </td>
+                   </td>
                     <td className="px-4 py-3">
                       <StatusPill status={donation.status} />
-                    </td>
-                  </tr>
+                   </td>
+                 </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+             </tbody>
+           </table>
+         </div>
         )}
-      </section>
-    </div>
+     </section>
+   </div>
   );
 }
 
@@ -221,9 +214,9 @@ function StatCard({
       <div className="flex items-center gap-2 text-ink-muted">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
-      </div>
+     </div>
       <p className="mt-3 text-3xl font-bold text-ink-primary">{value}</p>
-    </div>
+   </div>
   );
 }
 
@@ -252,9 +245,9 @@ function EmptyState({
             className="mt-6 inline-block rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-400"
           >
             {actionLabel}
-          </Link>
+         </Link>
         )}
-      </div>
-    </div>
+     </div>
+   </div>
   );
 }

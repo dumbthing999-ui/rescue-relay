@@ -32,6 +32,14 @@ export default async function DonationDetailPage({
     return null; // dashboard/page.tsx redirects unauthenticated users
   }
 
+  // Role gates the cancel action: only org_admin (not org_staff) can cancel.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  const isOrgAdmin = profile?.role === "org_admin";
+
   const { data, error } = await supabase
     .from("donations")
     .select(
@@ -266,6 +274,7 @@ export default async function DonationDetailPage({
             <DonationActions
               donationId={donation.id}
               status={donation.status}
+              canCancel={isOrgAdmin}
             />
           </div>
           {donation.notes && (

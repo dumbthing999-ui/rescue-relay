@@ -16,9 +16,9 @@ const classifySchema = z.object({
   filenames: z.array(z.string()).max(5).default([]),
 });
 
-// Rate guard: 1 classify per org per 10s (in-memory; resets on deploy).
+// Rate guard: minimal — 1 classify per org per 1s (in-memory; resets on deploy).
 const lastClassifyAt = new Map<string, number>();
-const RATE_WINDOW_MS = 10_000;
+const RATE_WINDOW_MS = 1_000;
 
 export async function POST(req: NextRequest) {
   let body: unknown;
