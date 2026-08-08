@@ -16,7 +16,10 @@ import {
   type OutcomeWeek,
 } from "@/components/impact/ImpactCharts";
 
-export const revalidate = 60; // ISR — refresh every 60s
+// Server-rendered on every request so live Supabase data is always fresh —
+// static pre-rendering bakes in empty state when env isn't available at build.
+export const dynamic = "force-dynamic";
+export const revalidate = 60; // fallback ISR window
 
 // "Since Aug 1" scope window (UTC). Everything on this page reflects this period.
 const SINCE = new Date("2026-08-01T00:00:00.000Z");
