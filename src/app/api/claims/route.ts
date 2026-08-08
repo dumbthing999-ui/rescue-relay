@@ -1,4 +1,8 @@
-// Rescue Relay — POST /api/claims (minimal, basic header check only)
+// Rescue Relay — POST /api/claims
+// Driver claims an available donation. Identity is taken from the authenticated
+// Supabase session (never from a client-supplied header) so a caller cannot
+// spoof whose driver account is claiming.
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase-server";
@@ -8,14 +12,6 @@ export const dynamic = "force-dynamic";
 const claimSchema = z.object({ donation_id: z.string().uuid() });
 
 export async function POST(req: NextRequest) {
-  const header = req.headers.get("x-claim-driver");
-  if (!header) {
-    return NextResponse.json(
-      { claimed: false, reason: "missing_header" },
-      { status: 400 }
-    );
-  }
-
   let body: unknown;
   try {
     body = await req.json();
@@ -31,10 +27,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Resolve the caller from the real session — never trust a header for
+  // identity. If the middleware already authenticated the user, this is the
+  // cookie session; otherwise behave as unauthenticated (401).
   const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ claimed: false, reason: "unauthorized" }, { status: 401 });
+  }
+
   const { data, error } = await supabase.rpc("claim_donation", {
     p_donation_id: parsed.data.donation_id,
-    p_driver_id: header,
+    p_driver_id: user.id,
   });
 
   if (error) {
