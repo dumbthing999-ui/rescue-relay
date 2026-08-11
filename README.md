@@ -58,6 +58,3 @@ npm run dev
 
 AI tools (Claude for coding assistance, NVIDIA NIM for the photo classifier) were used as tools. The problem, the data model, the atomic-claim RPC, all RLS policies, the geofence verification, and the fallback logic were designed and tested by hand; AI helped scaffold, debug, and phrase. Every line is explainable.
 
-## Live demo
-
-[Live demo link] · [Demo video] · [Screenshots]
